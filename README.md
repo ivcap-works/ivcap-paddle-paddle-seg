@@ -4,7 +4,7 @@ This directory implements [PaddleSeg](https://github.com/PaddlePaddle/PaddleSeg)
 the development toolkit for image segmentation based
 on [PaddlePaddle](https://github.com/paddlepaddle/paddle) as an IVCAP service.
 
-This service can then requested to perform image segmentation for a specific image under
+This service can then then be requested to perform image segmentation for a specific image under
 a specific model. Both, image and model need to be first uploaded to IVCAP to become
 IVCAP `artifacts`.
 
