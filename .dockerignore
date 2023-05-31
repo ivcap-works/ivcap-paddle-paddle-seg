@@ -1,0 +1,11 @@
+examples
+export_model
+UNUSED
+cache
+.git
+.dvc
+DATA
+docs
+*.whl
+*.tgz
+
