@@ -22,11 +22,17 @@ run: ${PROJECT_DIR}/model.tgz
 ${PROJECT_DIR}/model.tgz:
 	python ${PROJECT_DIR}/export.py \
 		--config ${MODEL_DIR}/${MODEL_NAME}.yml \
-		--model-path ${MODEL_DIR}/model.pdparams \
+		--model ${MODEL_DIR}/model.pdparams \
 		--save-path ${PROJECT_DIR}/model.tgz
 
+
+segformer:
+	python ${PROJECT_DIR}/export.py \
+		--cv-config ../examples/models/segformer_b5_seagrass_13/paddle_segmentation_v2-5_mix_vision_transformer_b5_public_seagrass_fiji_indo.json \
+		--save-path ../examples/models/segformer_b5_seagrass_13/model.artifact.tgz
+
 deploy-model: ${PROJECT_DIR}/model.tgz
-@echo "... uploading model - may take a while"
+	@echo "... uploading model - may take a while"
 	$(eval BUILD_ART=$(shell ivcap --silent artifact create -n ${MODEL_NAME}.model -f ${PROJECT_DIR}/model.tgz --chunk-size 20000000))
 	@echo "ArtifactID: $(BUILD_ART)"
 	sed -e "s/@@ARTIFACT@@/$(BUILD_ART)/" model-meta.json \

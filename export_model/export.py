@@ -32,19 +32,26 @@ def parse_args():
     parser.add_argument(
         "--config",
         dest="cfg",
-        help="The config file.",
+        help="The config file. (if not set, assumed to be in --cv-config)",
         default=None,
         type=str,
-        required=True)
+        required=False)
+    parser.add_argument(
+        "--cv-config",
+        dest="cv_cfg",
+        help="The cv-pipeline config file.",
+        default=None,
+        type=str,
+        required=False)
     parser.add_argument(
         '--save-path',
         dest='save_path',
         help='The file name for the exported model',
         type=str,
-        default='./model.tgz')
+        default='./model.artifact.tgz')
     parser.add_argument(
-        '--model-path',
-        dest='model_path',
+        '--model',
+        dest='model',
         help='The path of model for export',
         type=str,
         default=None)
@@ -96,33 +103,14 @@ class PostPorcesser(paddle.nn.Layer):
             new_outs.append(out)
         return new_outs
 
-
-def main(args):
-    os.environ['PADDLESEG_EXPORT_STAGE'] = 'True'
+def load_net(args, shape):
     cfg = Config(args.cfg)
     net = cfg.model
 
-    if args.model_path:
-        para_state_dict = paddle.load(args.model_path)
+    if args.model:
+        para_state_dict = paddle.load(args.model)
         net.set_dict(para_state_dict)
         logger.info('Loaded trained params of model successfully.')
-
-    if args.input_shape is None:
-        shape = [None, 3, None, None]
-    else:
-        shape = args.input_shape
-
-    meta = {
-        "$schema": "urn:ibenthos:schema:paddle.seg.model.1",
-        "name": Path(args.cfg).stem,
-        "model": cfg.dic["model"],
-        "shape": shape,
-        "artifact": "@@ARTIFACT@@"
-    }
-    jp = Path(args.save_path)
-    jp = jp.with_name(f"{jp.stem}-meta.json")
-    with open(jp, "w") as fp:
-        json.dump(meta , fp, indent=2) 
 
     if not args.without_argmax or args.with_softmax:
         new_net = SavedSegmentationNet(net, args.without_argmax,
@@ -135,10 +123,60 @@ def main(args):
         new_net,
         input_spec=[paddle.static.InputSpec(
             shape=shape, dtype='float32')])
+    return [new_net, cfg]
+    
+def main(args):
+    os.environ['PADDLESEG_EXPORT_STAGE'] = 'True'
+
+    seg_classes = []
+    def_colors = []
+    
+    if args.cv_cfg:
+        with open(args.cv_cfg) as f:
+            j = json.load(f)
+            dir = os.path.dirname(args.cv_cfg)
+            if not args.cfg:
+                cfg = j["paddlepaddlesegmentation_config_filename"]
+                args.cfg = os.path.join(dir, cfg)
+            if not args.model:
+                model = j["paddlepaddlesegmentation_model_filename"]
+                args.model = os.path.join(dir, model)
+            seg_classes = j.get("segmentationpostprocessing_classes", [])
+            def_colors = j.get("segmentationpostprocessing_default_class_colours", [])
+
+    t = str.maketrans("/ ", "--", "")
+    for i, name in enumerate(seg_classes):
+        n = name.translate(t).lower()
+        id = f"urn:ibenthos:segmentation:class:{n}"
+        seg_classes[i] = {
+            "id": id,
+            "name": name,
+            "def_color": def_colors[i] if len(def_colors) > i else [],
+        }
+
+    if args.input_shape is None:
+        shape = [None, 3, None, None]
+    else:
+        shape = args.input_shape
+            
+    [net, cfg] = load_net(args, shape)
+            
+    meta = {
+        "$schema": "urn:ibenthos:schema:paddle.seg.model.1",
+        "name": Path(args.cfg).stem,
+        "model": cfg.dic["model"],
+        "classes": seg_classes,
+        "shape": shape,
+        "artifact": "@@ARTIFACT@@"
+    }
+    jp = Path(args.save_path)
+    jp = jp.with_name(f"{jp.stem}-meta.json")
+    with open(jp, "w") as fp:
+        json.dump(meta, fp, indent=2) 
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         save_path = os.path.join(tmp_dir, 'model')
-        paddle.jit.save(new_net, save_path)
+        paddle.jit.save(net, save_path)
 
         yml_file = os.path.join(tmp_dir, 'deploy.yaml')
         with open(yml_file, 'w') as file:
@@ -153,6 +191,11 @@ def main(args):
                 }
             }
             yaml.dump(data, file)
+
+        meta_file = os.path.join(tmp_dir, 'meta.json')
+        with open(meta_file, 'w') as file:
+            meta.pop("artifact",  None)
+            json.dump(meta, file, indent=2) 
 
         with tarfile.open(args.save_path, 'w:gz') as tar:
             tar.add(tmp_dir, arcname='.')
