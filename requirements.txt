@@ -7,4 +7,4 @@ paddleseg==2.5.0 # Pin paddleseg version for now since it seems that they have i
 scikit_learn==1.0.2 # pip install sklearn won't work for some strange reason
 
 #ivcap-sdk-service>=0.1.0
-git+https://github.com/reinventingscience/ivcap-sdk-python.git@cio-readable-proxy#egg=ivcap_sdk_service&subdirectory=sdk_service
+git+https://github.com/ivcap-works/ivcap-service-sdk-python.git@main#egg=ivcap_sdk_service

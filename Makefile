@@ -29,6 +29,17 @@ TEST_IMG_DIR=../../ivcap-df/examples/SeagrassWatch/IndonesiaFlores/data
 
 run:
 	mkdir -p ${PROJECT_DIR}/DATA/run && rm -rf ${PROJECT_DIR}/DATA/run/*
+	env PYTHONPATH=../../ivcap-sdk-python/ivcap-service-sdk-python/src \
+	python ${SERVICE_FILE} \
+	  --device cpu \
+	  --model ${PROJECT_DIR}/export_model/model.tgz \
+		--image ${PROJECT_DIR}/${TEST_IMG} \
+		--ivcap:in-dir ${PROJECT_DIR} \
+		--ivcap:out-dir ${PROJECT_DIR}/DATA/run
+	@echo ">>> Output should be in '${PROJECT_DIR}/DATA/run'"
+
+run-collection:
+	mkdir -p ${PROJECT_DIR}/DATA/run && rm -rf ${PROJECT_DIR}/DATA/run/*
 	env PYTHON_PATH=../../ivcap-sdk-python/sdk_service/src \
 	python ${SERVICE_FILE} \
 	  --device cpu \

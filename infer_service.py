@@ -15,6 +15,9 @@
 
 # Original source code taken from https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.6/deploy/python/infer.py
 
+from functools import reduce
+import json
+from typing import Any, Optional
 import warnings
 
 from predictor import DeployConfig, Predictor, adjust_image, use_auto_tune, set_logger
@@ -48,8 +51,8 @@ SERVICE = Service(
             type=Type.ARTIFACT, 
             description='Model to use (tgz archive of all needed components)'),
         Parameter(
-            name='image', 
-            type=Type.ARTIFACT, 
+            name='images', 
+            type=Type.COLLECTION, 
             description='Image to analyse'),
         Parameter(
             name='max-img-size', 
@@ -164,8 +167,12 @@ class IOManager:
         self.args = args
         #logger.info(f"image name: '{img_name}' path: '{args.image.path}' - isfile: {os.path.isfile(args.image.path)}")
         #self.img_list, _ = get_image_list(args.image.path)
-        img = adjust_image(args.image, args.max_img_size)
-        self.img_list = [img]
+        self.img_list = []
+        self.images = {}
+        for img in args.images:
+            imgA = adjust_image(img, args.max_img_size)
+            self.img_list.append(imgA)
+            self.images[imgA] = img
         logger.info(f"Image list '{self.img_list}'")
         self.batch_size = args.batch_size
 
@@ -176,6 +183,10 @@ class IOManager:
         tf.extractall(tmp_dir)
         deployPath = os.path.join(tmp_dir, 'deploy.yaml')
         self.cfg = DeployConfig(deployPath)
+        
+        with open(os.path.join(tmp_dir, 'meta.json')) as f:
+            self.meta = json.load(f)
+            self.classes = self.meta.get("classes", None)
 
     def __repr__(self):
         return f"IOManager(batch_size={self.batch_size }, save_dir={self.save_dir}, img_list={self.img_list})"
@@ -183,31 +194,58 @@ class IOManager:
     def get_config(self) -> DeployConfig:
         return self.cfg
 
+    def  get_colormap(self) -> Optional[Any]:
+        c = self.meta.get("classes", None)
+        if not c:
+            return None
+        
+        def r(p, el):
+            for c in el["def_color"]:
+                p.append(c)
+            return p
+        
+        cm = reduce(r, c, [])
+        return cm
+
     def save_imgs(self, results, imgs_path):
         logger.debug(f"... save_imgs shape: {results.shape} img_path: {imgs_path}")
 
+        cm = self.get_colormap()
         for i in range(results.shape[0]):
             result = results[i]
-            image = self.args.image.name # needs fixing when we deal with multiple images
-            pseudo_img = get_pseudo_color_map(result)
+            img = self.images[imgs_path[i]]
+            img_name = img.name
+            pseudo_img = get_pseudo_color_map(result, cm)
             stats = Stat(pseudo_img)
             logger.debug(f'... 0/1: {stats.h[:2]} count: {stats.count} shape: {result.shape}')
-            basename = os.path.basename(imgs_path[i])
+            basename = os.path.basename(img_name)
             basename, _ = os.path.splitext(basename)
             basename = f'{basename}.pseudo.png'
 
             meta = create_metadata('urn:ibenthos:schema:paddle.seg.inference.1', {
-                'image': image,
+                'image': img_name,
                 'model': self.args.model.name,
                 'width': result.shape[0],
                 'height': result.shape[1],
-                'cover': 1.0 * stats.h[1] / results.size,
+                'cover': self.get_cover(stats),
                 #'params': self.args._asdict(),
-                'order': ivcap_config().ORDER_ID,
+                'order-id': ivcap_config().ORDER_ID,
             })
             url = deliver_data(basename, lambda f: pseudo_img.save(f, format='png'), SupportedMimeTypes.JPEG, metadata=meta) 
             logger.debug(f"Saved pseudo colored image ({pseudo_img}) type as '{url}'")
 
+    def get_cover(self, stats: Stat):
+        cover = []
+        count = stats.count[0]
+        for i, cl in enumerate(self.classes):
+            m = cl.copy()
+            m['color'] = m.pop("def_color",  None)
+            m['cover'] = 1.0 * stats.h[i] / count
+            cover.append(m)
+        return cover
+            
+            
+        
     def __iter__(self):
         return self.Iter(self)
 
