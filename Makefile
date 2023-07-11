@@ -24,17 +24,17 @@ DOCKER_DEPLOY=${DOCKER_REGISTRY}/${DOCKER_TAG}
 
 PROJECT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-TEST_MODEL=${PROJECT_DIR}/export_model/model.tgz
-TEST_IMG=${PROJECT_DIR}/examples/GOPR0457.JPG
-TEST_IMG_DIR=../../ivcap-df/examples/SeagrassWatch/IndonesiaFlores/data
+TEST_MODEL=export_model/model.tgz
+TEST_IMG=examples/GOPR0457.JPG
+TEST_IMG_DIR=examples/indonesia_flores
 
 run:
 	mkdir -p ${PROJECT_DIR}/DATA/run && rm -rf ${PROJECT_DIR}/DATA/run/*
 	env PYTHONPATH=../../ivcap-sdk-python/ivcap-service-sdk-python/src \
 	python ${SERVICE_FILE} \
 	  --device cpu \
-	  --model ${TEST_MODEL} \
-		--image ${TEST_IMG} \
+	  --model ${PROJECT_DIR}/${TEST_MODEL} \
+		--image ${PROJECT_DIR}/${TEST_IMG} \
 		--ivcap:in-dir ${PROJECT_DIR} \
 		--ivcap:out-dir ${PROJECT_DIR}/DATA/run
 	@echo ">>> Output should be in '${PROJECT_DIR}/DATA/run'"
@@ -44,8 +44,8 @@ run-collection:
 	env PYTHON_PATH=../../ivcap-sdk-python/sdk_service/src \
 	python ${SERVICE_FILE} \
 	  --device cpu \
-	  --model ${PROJECT_DIR}/export_model/model.tgz \
-		--image ${PROJECT_DIR}/${TEST_IMG} \
+	  --model ${PROJECT_DIR}/${TEST_MODEL} \
+		--image ${PROJECT_DIR}/${TEST_IMG_DIR} \
 		--ivcap:in-dir ${PROJECT_DIR} \
 		--ivcap:out-dir ${PROJECT_DIR}/DATA/run
 	@echo ">>> Output should be in '${PROJECT_DIR}/DATA/run'"
@@ -66,7 +66,7 @@ run-docker: #docker-build
 		${DOCKER_NAME} \
 		--ivcap:in-dir /data/in \
 		--ivcap:out-dir /data/out \
-		--model /data/in/export_model/model.tgz \
+		--model /data/in/${TEST_MODEL} \
 		--image /data/in/${TEST_IMG}
 
 run-docker-segformer:
