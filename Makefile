@@ -71,8 +71,8 @@ run-docker: #docker-build
 
 run-docker-segformer:
 	make -f ${PROJECT_DIR}/Makefile \
-		TEST_MODEL=/data/in/examples/models/segformer_b5_seagrass_13/model.artifact.tgz \
-		TEST_IMG=/data/in/examples/indonesia_flores \
+		TEST_MODEL=examples/models/segformer_b5_seagrass_13/model.artifact.tgz \
+		TEST_IMG=examples/indonesia_flores \
 		run-docker
 
 MODEL_ARTIFACT=urn:ivcap:artifact:145fdbdd-06f6-45ca-a241-1ba846d33f0c
