@@ -217,7 +217,7 @@ class IOManager:
             img_name = img.name
             pseudo_img = get_pseudo_color_map(result, cm)
             stats = Stat(pseudo_img)
-            logger.debug(f'... 0/1: {stats.h[:2]} count: {stats.count} shape: {result.shape}')
+            logger.debug(f'... count: {stats.count} shape: {result.shape}')
             basename = os.path.basename(img_name)
             basename, _ = os.path.splitext(basename)
             basename = f'{basename}.pseudo.png'

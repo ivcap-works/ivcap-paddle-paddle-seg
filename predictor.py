@@ -297,7 +297,8 @@ class Predictor:
 
     def _preprocess(self, img):
         logger.debug(f"... _preprocess {img}, self.cfg.transforms: {self.cfg.transforms}")
-        return self.cfg.transforms(img)[0]
+        t = self.cfg.transforms({"img": img})
+        return t["img"]
 
     def _postprocess(self, results):
         if self.args.with_argmax:

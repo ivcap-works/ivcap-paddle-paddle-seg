@@ -1,8 +1,8 @@
 pyyaml >= 5.1
 
-paddlepaddle==2.3.2 # Comment in (and remove paddlepaddle-gpu) for local development - Can use CPU rather then GPU if performance is not a thing.
+paddlepaddle==2.5.0 # Comment in (and remove paddlepaddle-gpu) for local development - Can use CPU rather then GPU if performance is not a thing.
 #paddlepaddle-gpu==2.2.1
-paddleseg==2.5.0 # Pin paddleseg version for now since it seems that they have introduced breaking changes in paddleseg 2.6.0 that are incompatible with the model configurations that we are using.
+paddleseg==2.8.0 # Pin paddleseg version for now since it seems that they have introduced breaking changes in paddleseg 2.6.0 that are incompatible with the model configurations that we are using.
 
 scikit_learn==1.0.2 # pip install sklearn won't work for some strange reason
 
