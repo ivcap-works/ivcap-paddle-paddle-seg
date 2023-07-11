@@ -24,7 +24,8 @@ DOCKER_DEPLOY=${DOCKER_REGISTRY}/${DOCKER_TAG}
 
 PROJECT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-TEST_IMG=examples/GOPR0457.JPG
+TEST_MODEL=${PROJECT_DIR}/export_model/model.tgz
+TEST_IMG=${PROJECT_DIR}/examples/GOPR0457.JPG
 TEST_IMG_DIR=../../ivcap-df/examples/SeagrassWatch/IndonesiaFlores/data
 
 run:
@@ -32,8 +33,8 @@ run:
 	env PYTHONPATH=../../ivcap-sdk-python/ivcap-service-sdk-python/src \
 	python ${SERVICE_FILE} \
 	  --device cpu \
-	  --model ${PROJECT_DIR}/export_model/model.tgz \
-		--image ${PROJECT_DIR}/${TEST_IMG} \
+	  --model ${TEST_MODEL} \
+		--image ${TEST_IMG} \
 		--ivcap:in-dir ${PROJECT_DIR} \
 		--ivcap:out-dir ${PROJECT_DIR}/DATA/run
 	@echo ">>> Output should be in '${PROJECT_DIR}/DATA/run'"
@@ -55,6 +56,7 @@ run-docker: #docker-build
 	@echo ">>>>>>>    minikube mount ${PROJECT_DIR}:${PROJECT_DIR}"
 	@echo ""
 	mkdir -p ${PROJECT_DIR}/DATA/runs && rm -rf ${PROJECT_DIR}/DATA/runs/*
+	env DOCKER_DEFAULT_PLATFORM=linux/amd64 \
 	docker run -it \
 		-e IVCAP_INSIDE_CONTAINER="" \
 		-e IVCAP_ORDER_ID=urn:ivcap:order:0000 \
@@ -66,6 +68,12 @@ run-docker: #docker-build
 		--ivcap:out-dir /data/out \
 		--model /data/in/export_model/model.tgz \
 		--image /data/in/${TEST_IMG}
+
+run-docker-segformer:
+	make -f ${PROJECT_DIR}/Makefile \
+		TEST_MODEL=/data/in/examples/models/segformer_b5_seagrass_13/model.artifact.tgz \
+		TEST_IMG=/data/in/examples/indonesia_flores \
+		run-docker
 
 MODEL_ARTIFACT=urn:ivcap:artifact:145fdbdd-06f6-45ca-a241-1ba846d33f0c
 IMAGE_ARTIFACT=urn:ivcap:artifact:07793994-bbff-49d5-979b-0843b6b4093c
@@ -107,33 +115,10 @@ run-batch:
 			--ivcap:out-dir ${PROJECT_DIR}/DATA/out; \
 	done
 
-# run-batch2:
-# 	find ${TEST_IMG_DIR} -name "*.JPG" \
-# 	| while read f; do \
-# 		echo "== Processing $$f"; \
-# 		sips -o ${PROJECT_DIR}/DATA -Z 640 $$f; \
-# 		inf=`basename $$f`; \
-# 		echo >>>> ${inf}; \
-# 		exit -1; \
-# 		python infer_service.py \
-# 			--device cpu \
-# 			--model /tmp/model.tgz \
-# 			--image $$f \
-# 			--ivcap:in-dir ${PROJECT_DIR}/DATA; \
-# 			--ivcap:out-dir ${PROJECT_DIR}/DATA; \
-# 		echo "..... Done $$f"; \
-# 	done
-
-# run-downsize:
-# 	mkdir -p ${PROJECT_DIR}/DATA/in
-# 	find ${TEST_IMG_DIR} -name "*.JPG" \
-# 	| while read f; do \
-# 		@echo "== Processing $$f"; \
-# 		sips -o ${PROJECT_DIR}/DATA/in -Z 640 $$f; \
-# 	done	
 
 docker-build:
 	@echo "Building docker image ${DOCKER_NAME}"
+	env DOCKER_DEFAULT_PLATFORM=linux/amd64 \
 	docker build \
 		--build-arg GIT_COMMIT=${GIT_COMMIT} \
 		--build-arg GIT_TAG=${GIT_TAG} \
