@@ -119,7 +119,7 @@ run-batch:
 docker-build:
 	@echo "Building docker image ${DOCKER_NAME}"
 	env DOCKER_DEFAULT_PLATFORM=linux/amd64 \
-	docker build \
+	docker build --no-cache --pull \
 		--build-arg GIT_COMMIT=${GIT_COMMIT} \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg BUILD_DATE="$(shell date)" \

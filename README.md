@@ -325,11 +325,15 @@ tf = tarfile.open(args.model.as_local_file(), 'r|gz')
 tf.extractall(tmp_dir)
 ```
 
-The image to be processed is accessed in similar fashion:
+The images in the `--images` collection are accessed in similar fashion:
 
 ```python
-img = adjust_image(args.image, args.max_img_size)
-self.img_list = [img]
+self.img_list = []
+self.images = {}
+for img in args.images:
+    imgA = adjust_image(img, args.max_img_size)
+    self.img_list.append(imgA)
+    self.images[imgA] = img
 logger.info(f"Image list '{self.img_list}'")
 ```
 
@@ -338,22 +342,22 @@ This section also publishes the result of the predictor:
 ```python
 for i in range(results.shape[0]):
     result = results[i]
-    image = self.args.image.name # needs fixing when we deal with multiple images
-    pseudo_img = get_pseudo_color_map(result)
+    img = self.images[imgs_path[i]]
+    img_name = img.name
+    pseudo_img = get_pseudo_color_map(result, cm)
     stats = Stat(pseudo_img)
-    logger.debug(f'... 0/1: {stats.h[:2]} count: {stats.count} shape: {result.shape}')
-    basename = os.path.basename(imgs_path[i])
+    logger.debug(f'... count: {stats.count} shape: {result.shape}')
+    basename = os.path.basename(img_name)
     basename, _ = os.path.splitext(basename)
     basename = f'{basename}.pseudo.png'
 
     meta = create_metadata('urn:ibenthos:schema:paddle.seg.inference.1', {
-        'image': image,
+        'image': img_name,
         'model': self.args.model.name,
         'width': result.shape[0],
         'height': result.shape[1],
-        'cover': 1.0 * stats.h[1] / results.size,
-        #'params': self.args._asdict(),
-        'order': ivcap_config().ORDER_ID,
+        'cover': self.get_cover(stats),
+        'order-id': ivcap_config().ORDER_ID,
     })
     url = deliver_data(basename, lambda f: pseudo_img.save(f, format='png'), SupportedMimeTypes.JPEG, metadata=meta) 
     logger.debug(f"Saved pseudo colored image ({pseudo_img}) type as '{url}'")
@@ -362,7 +366,7 @@ for i in range(results.shape[0]):
 In the first step, we retrieve a pseudo colored image of the prediction results and statistics on that image:
 
 ```python
-pseudo_img = get_pseudo_color_map(result)
+pseudo_img = get_pseudo_color_map(result, cm)
 stats = Stat(pseudo_img)
 ```
 
@@ -374,10 +378,23 @@ meta = create_metadata('urn:ibenthos:schema:paddle.seg.inference.1', {
     'model': self.args.model.name,
     'width': result.shape[0],
     'height': result.shape[1],
-    'cover': 1.0 * stats.h[1] / results.size,
-    #'params': self.args._asdict(),
+    'cover': self.get_cover(stats),
     'order': ivcap_config().ORDER_ID,
 })
+```
+
+with `get_cover` being defined as:
+
+```python
+def get_cover(self, stats: Stat):
+    cover = []
+    count = stats.count[0]
+    for i, cl in enumerate(self.classes):
+        m = cl.copy()
+        m['color'] = m.pop("def_color",  None)
+        m['cover'] = 1.0 * stats.h[i] / count
+        cover.append(m)
+    return cover
 ```
 
 and finally we publish the image and it's metadata:
