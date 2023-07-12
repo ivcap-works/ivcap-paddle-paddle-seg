@@ -50,6 +50,12 @@ run-collection:
 		--ivcap:out-dir ${PROJECT_DIR}/DATA/run
 	@echo ">>> Output should be in '${PROJECT_DIR}/DATA/run'"
 
+run-segformer:
+	make -f ${PROJECT_DIR}/Makefile \
+		TEST_MODEL=examples/models/segformer_b5_seagrass_13/model.artifact.tgz \
+		TEST_IMG=examples/indonesia_flores \
+		run-collection
+
 run-docker: #docker-build
 	@echo ""
 	@echo ">>>>>>> On Mac, please ensure that this directory is mounted into minikube (if that's what you are using)"

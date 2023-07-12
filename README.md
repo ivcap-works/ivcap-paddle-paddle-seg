@@ -359,7 +359,7 @@ for i in range(results.shape[0]):
         'cover': self.get_cover(stats),
         'order-id': ivcap_config().ORDER_ID,
     })
-    url = deliver_data(basename, lambda f: pseudo_img.save(f, format='png'), SupportedMimeTypes.JPEG, metadata=meta) 
+    url = deliver_data(basename, lambda f: pseudo_img.save(f, format='png'), SupportedMimeTypes.PNG, metadata=meta) 
     logger.debug(f"Saved pseudo colored image ({pseudo_img}) type as '{url}'")
 ```
 
